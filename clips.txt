@@ -1,0 +1,5 @@
+clip1, happy, high
+clip2, sad, low
+clip3, shocking, high
+clip4, calm, low
+clip5, hype, high
