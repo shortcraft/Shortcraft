@@ -279,4 +279,6 @@ if __name__ == "__main__":
     print("  ShortCraft Web Server Starting...")
     print("  Open: http://localhost:5000")
     print("=" * 40)
-    app.run(debug=True)
+    import os
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
