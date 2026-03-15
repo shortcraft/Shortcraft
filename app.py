@@ -1,18 +1,133 @@
 # ShortCraft - Web Interface
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect, url_for, session
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from auth import db, login_manager, User
 import os
 import whisper
 import numpy as np
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 
 app = Flask(__name__)
+app = Flask(__name__)
+app.secret_key = "shortcraft2026"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
+
+db.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+with app.app_context():
+    db.create_all()
 
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "outputs"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# ─── SIGNUP ───────────────────────
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        name     = request.form.get("name")
+        email    = request.form.get("email")
+        password = request.form.get("password")
+
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            return redirect(url_for("signup"))
+
+        new_user = User(
+            name     = name,
+            email    = email,
+            password = generate_password_hash(password)
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        login_user(new_user)
+        return redirect(url_for("home"))
+
+    return '''<!DOCTYPE html>
+    <html><head><title>ShortCraft - Sign Up</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0C0C0E; color:#fff; font-family:monospace; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+        h1 { font-size:36px; color:#F59E0B; margin-bottom:8px; }
+        p { color:rgba(255,255,255,.4); margin-bottom:32px; font-size:14px; }
+        .box { background:#111113; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:40px; width:400px; }
+        input { width:100%; background:#1a1a1c; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff; font-family:monospace; font-size:14px; padding:12px 16px; margin-bottom:16px; outline:none; }
+        input:focus { border-color:#F59E0B; }
+        input::placeholder { color:rgba(255,255,255,.25); }
+        .btn { width:100%; background:#F59E0B; color:#000; border:none; padding:13px; border-radius:8px; font-family:monospace; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
+        .btn:hover { background:#FBBF24; }
+        .link { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.4); }
+        .link a { color:#F59E0B; text-decoration:none; }
+    </style></head>
+    <body>
+        <h1>ShortCraft.</h1>
+        <p>Create your account</p>
+        <div class="box">
+            <form method="POST">
+                <input name="name" placeholder="Your name" required />
+                <input name="email" type="email" placeholder="Email address" required />
+                <input name="password" type="password" placeholder="Password" required />
+                <button class="btn" type="submit">Create Account →</button>
+            </form>
+            <div class="link">Already have an account? <a href="/login">Log in</a></div>
+        </div>
+    </body></html>'''
+
+# ─── LOGIN ────────────────────────
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email    = request.form.get("email")
+        password = request.form.get("password")
+        user     = User.query.filter_by(email=email).first()
+
+        if not user or not check_password_hash(user.password, password):
+            return redirect(url_for("login"))
+
+        login_user(user)
+        return redirect(url_for("home"))
+
+    return '''<!DOCTYPE html>
+    <html><head><title>ShortCraft - Log In</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0C0C0E; color:#fff; font-family:monospace; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+        h1 { font-size:36px; color:#F59E0B; margin-bottom:8px; }
+        p { color:rgba(255,255,255,.4); margin-bottom:32px; font-size:14px; }
+        .box { background:#111113; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:40px; width:400px; }
+        input { width:100%; background:#1a1a1c; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff; font-family:monospace; font-size:14px; padding:12px 16px; margin-bottom:16px; outline:none; }
+        input:focus { border-color:#F59E0B; }
+        input::placeholder { color:rgba(255,255,255,.25); }
+        .btn { width:100%; background:#F59E0B; color:#000; border:none; padding:13px; border-radius:8px; font-family:monospace; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
+        .btn:hover { background:#FBBF24; }
+        .link { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.4); }
+        .link a { color:#F59E0B; text-decoration:none; }
+    </style></head>
+    <body>
+        <h1>ShortCraft.</h1>
+        <p>Welcome back</p>
+        <div class="box">
+            <form method="POST">
+                <input name="email" type="email" placeholder="Email address" required />
+                <input name="password" type="password" placeholder="Password" required />
+                <button class="btn" type="submit">Log In →</button>
+            </form>
+            <div class="link">Don't have an account? <a href="/signup">Sign up</a></div>
+        </div>
+    </body></html>'''
+
+# ─── LOGOUT ───────────────────────
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
 
 # ─── HOME PAGE ───────────────────
 @app.route("/")
