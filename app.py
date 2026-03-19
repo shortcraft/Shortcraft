@@ -1,6 +1,6 @@
-# ShortCraft - Web Interface
+# ShortCraft - Web Interface v2.0
 
-from flask import Flask, request, jsonify, send_file, redirect, url_for, session
+from flask import Flask, request, jsonify, send_file, redirect, url_for, session, render_template
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from auth import db, login_manager, User
@@ -9,7 +9,6 @@ import whisper
 import numpy as np
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 
-app = Flask(__name__)
 app = Flask(__name__)
 app.secret_key = "shortcraft2026"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
@@ -37,7 +36,7 @@ def signup():
 
         existing = User.query.filter_by(email=email).first()
         if existing:
-            return redirect(url_for("signup"))
+            return render_template("signup.html", error="Email already exists")
 
         new_user = User(
             name     = name,
@@ -49,35 +48,7 @@ def signup():
         login_user(new_user)
         return redirect(url_for("home"))
 
-    return '''<!DOCTYPE html>
-    <html><head><title>ShortCraft - Sign Up</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:#0C0C0E; color:#fff; font-family:monospace; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
-        h1 { font-size:36px; color:#F59E0B; margin-bottom:8px; }
-        p { color:rgba(255,255,255,.4); margin-bottom:32px; font-size:14px; }
-        .box { background:#111113; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:40px; width:400px; }
-        input { width:100%; background:#1a1a1c; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff; font-family:monospace; font-size:14px; padding:12px 16px; margin-bottom:16px; outline:none; }
-        input:focus { border-color:#F59E0B; }
-        input::placeholder { color:rgba(255,255,255,.25); }
-        .btn { width:100%; background:#F59E0B; color:#000; border:none; padding:13px; border-radius:8px; font-family:monospace; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
-        .btn:hover { background:#FBBF24; }
-        .link { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.4); }
-        .link a { color:#F59E0B; text-decoration:none; }
-    </style></head>
-    <body>
-        <h1>ShortCraft.</h1>
-        <p>Create your account</p>
-        <div class="box">
-            <form method="POST">
-                <input name="name" placeholder="Your name" required />
-                <input name="email" type="email" placeholder="Email address" required />
-                <input name="password" type="password" placeholder="Password" required />
-                <button class="btn" type="submit">Create Account →</button>
-            </form>
-            <div class="link">Already have an account? <a href="/login">Log in</a></div>
-        </div>
-    </body></html>'''
+    return render_template("signup.html")
 
 # ─── LOGIN ────────────────────────
 @app.route("/login", methods=["GET", "POST"])
@@ -88,39 +59,12 @@ def login():
         user     = User.query.filter_by(email=email).first()
 
         if not user or not check_password_hash(user.password, password):
-            return redirect(url_for("login"))
+            return render_template("login.html", error="Invalid email or password")
 
         login_user(user)
         return redirect(url_for("home"))
 
-    return '''<!DOCTYPE html>
-    <html><head><title>ShortCraft - Log In</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:#0C0C0E; color:#fff; font-family:monospace; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
-        h1 { font-size:36px; color:#F59E0B; margin-bottom:8px; }
-        p { color:rgba(255,255,255,.4); margin-bottom:32px; font-size:14px; }
-        .box { background:#111113; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:40px; width:400px; }
-        input { width:100%; background:#1a1a1c; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff; font-family:monospace; font-size:14px; padding:12px 16px; margin-bottom:16px; outline:none; }
-        input:focus { border-color:#F59E0B; }
-        input::placeholder { color:rgba(255,255,255,.25); }
-        .btn { width:100%; background:#F59E0B; color:#000; border:none; padding:13px; border-radius:8px; font-family:monospace; font-weight:700; font-size:15px; cursor:pointer; margin-top:8px; }
-        .btn:hover { background:#FBBF24; }
-        .link { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.4); }
-        .link a { color:#F59E0B; text-decoration:none; }
-    </style></head>
-    <body>
-        <h1>ShortCraft.</h1>
-        <p>Welcome back</p>
-        <div class="box">
-            <form method="POST">
-                <input name="email" type="email" placeholder="Email address" required />
-                <input name="password" type="password" placeholder="Password" required />
-                <button class="btn" type="submit">Log In →</button>
-            </form>
-            <div class="link">Don't have an account? <a href="/signup">Sign up</a></div>
-        </div>
-    </body></html>'''
+    return render_template("login.html")
 
 # ─── LOGOUT ───────────────────────
 @app.route("/logout")
@@ -129,150 +73,18 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-# ─── HOME PAGE ───────────────────
+# ─── HOME / DASHBOARD ─────────────
 @app.route("/")
+@login_required
 def home():
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>ShortCraft AI</title>
-        <style>
-            * { margin:0; padding:0; box-sizing:border-box; }
-            body {
-                background: #0C0C0E;
-                color: #fff;
-                font-family: monospace;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-            }
-            h1 { font-size: 48px; color: #F59E0B; margin-bottom: 8px; }
-            p  { color: rgba(255,255,255,.4); margin-bottom: 40px; font-size: 16px; }
-            .box {
-                border: 2px dashed rgba(245,158,11,.4);
-                border-radius: 16px;
-                padding: 60px 80px;
-                text-align: center;
-                cursor: pointer;
-                transition: all .3s;
-                margin-bottom: 24px;
-            }
-            .box:hover { border-color: #F59E0B; background: rgba(245,158,11,.05); }
-            .box-icon  { font-size: 48px; margin-bottom: 16px; }
-            .box-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
-            .box-sub   { color: rgba(255,255,255,.35); font-size: 14px; }
-            input[type=file] { display: none; }
-            .btn {
-                background: #F59E0B;
-                color: #000;
-                border: none;
-                padding: 14px 40px;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                font-family: monospace;
-                transition: all .2s;
-            }
-            .btn:hover { background: #FBBF24; transform: translateY(-2px); }
-            .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-            #status {
-                margin-top: 24px;
-                color: #F59E0B;
-                font-size: 14px;
-                min-height: 24px;
-            }
-            #filename {
-                color: #F59E0B;
-                margin-top: 12px;
-                font-size: 14px;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>ShortCraft.</h1>
-        <p>AI-powered shorts editor — drop a video, get a short</p>
-
-        <label for="fileInput">
-            <div class="box" id="dropBox">
-                <div class="box-icon">🎬</div>
-                <div class="box-title">Drop your video here</div>
-                <div class="box-sub">MP4 · MOV · AVI — click to browse</div>
-            </div>
-        </label>
-
-        <input type="file" id="fileInput" accept="video/*">
-        <div id="filename"></div>
-
-        <button class="btn" id="editBtn" disabled onclick="uploadAndEdit()">
-            ⚡ Generate Short
-        </button>
-
-        <div id="status"></div>
-
-        <script>
-            const fileInput = document.getElementById("fileInput");
-            const editBtn   = document.getElementById("editBtn");
-            const status    = document.getElementById("status");
-            const filename  = document.getElementById("filename");
-
-            fileInput.addEventListener("change", function() {
-                if (fileInput.files.length > 0) {
-                    editBtn.disabled = false;
-                    filename.textContent = "Selected: " + fileInput.files[0].name;
-                }
-            });
-
-            async function uploadAndEdit() {
-                const file = fileInput.files[0];
-                if (!file) return;
-
-                editBtn.disabled = true;
-                status.textContent = "Uploading video...";
-
-                const formData = new FormData();
-                formData.append("video", file);
-
-                try {
-                    status.textContent = "Uploading...";
-                    const uploadRes  = await fetch("/upload", { method: "POST", body: formData });
-                    const uploadData = await uploadRes.json();
-
-                    if (!uploadData.success) {
-                        status.textContent = "Upload failed.";
-                        return;
-                    }
-
-                    status.textContent = "Analyzing video... this takes 1-2 mins ⚙️";
-
-                    const editRes  = await fetch("/edit", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ filename: uploadData.filename })
-                    });
-                    const editData = await editRes.json();
-
-                    if (editData.success) {
-                        status.innerHTML = "✅ Done! <a href='/download/" + editData.output + "' style='color:#F59E0B'>Download your short</a>";
-                    } else {
-                        status.textContent = "Error: " + editData.error;
-                    }
-
-                } catch(e) {
-                    status.textContent = "Something went wrong.";
-                    editBtn.disabled = false;
-                }
-            }
-        </script>
-    </body>
-    </html>
-    '''
+    return render_template("dashboard.html",
+        name         = current_user.name,
+        shorts_count = 0
+    )
 
 # ─── UPLOAD ───────────────────────
 @app.route("/upload", methods=["POST"])
+@login_required
 def upload():
     if "video" not in request.files:
         return jsonify({"success": False, "error": "No file"})
@@ -283,6 +95,7 @@ def upload():
 
 # ─── EDIT ─────────────────────────
 @app.route("/edit", methods=["POST"])
+@login_required
 def edit():
     try:
         data     = request.get_json()
@@ -331,7 +144,7 @@ def edit():
         short = concatenate_videoclips(clips)
         dur   = short.duration
 
-        # 5. Captions — only on speech segments inside cut ranges
+        # 5. Captions
         model     = whisper.load_model("base")
         result    = model.transcribe(filepath)
         cap_clips = []
@@ -344,7 +157,6 @@ def edit():
             if not text or s > dur:
                 continue
 
-            # Only caption if speech falls inside one of our cut ranges
             in_cut = any(cs <= s <= ce for cs, ce in cut_ranges)
             if not in_cut:
                 continue
@@ -385,6 +197,7 @@ def edit():
 
 # ─── DOWNLOAD ─────────────────────
 @app.route("/download/<filename>")
+@login_required
 def download(filename):
     return send_file(os.path.join(OUTPUT_FOLDER, filename), as_attachment=True)
 
@@ -394,6 +207,5 @@ if __name__ == "__main__":
     print("  ShortCraft Web Server Starting...")
     print("  Open: http://localhost:5000")
     print("=" * 40)
-    import os
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

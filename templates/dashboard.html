@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ShortCraft - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0C0C0E; color:#fff; font-family:'IBM Plex Mono',monospace; min-height:100vh; }
+
+        /* NAV */
+        .nav { display:flex; align-items:center; justify-content:space-between; padding:16px 40px; border-bottom:1px solid rgba(255,255,255,.07); background:#0E0E10; position:sticky; top:0; z-index:50; }
+        .nav-logo { font-size:20px; font-weight:700; color:#F59E0B; letter-spacing:-1px; }
+        .nav-right { display:flex; align-items:center; gap:16px; }
+        .nav-name { font-size:13px; color:rgba(255,255,255,.5); }
+        .nav-btn { background:transparent; border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.6); padding:7px 16px; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; cursor:pointer; transition:all .2s; text-decoration:none; }
+        .nav-btn:hover { border-color:rgba(255,255,255,.3); color:#fff; }
+
+        /* MAIN */
+        .main { max-width:900px; margin:0 auto; padding:48px 24px; }
+
+        /* GREETING */
+        .greeting { margin-bottom:48px; }
+        .greeting-title { font-size:32px; font-weight:700; letter-spacing:-1px; margin-bottom:8px; }
+        .greeting-title span { color:#F59E0B; }
+        .greeting-sub { font-size:14px; color:rgba(255,255,255,.4); font-weight:300; }
+
+        /* STATS */
+        .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:48px; }
+        .stat { background:#111113; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:24px; }
+        .stat-label { font-size:11px; color:rgba(255,255,255,.35); letter-spacing:1.5px; margin-bottom:10px; }
+        .stat-value { font-size:32px; font-weight:700; color:#F59E0B; margin-bottom:4px; }
+        .stat-sub { font-size:12px; color:rgba(255,255,255,.3); }
+
+        /* UPLOAD SECTION */
+        .section-title { font-size:14px; font-weight:700; letter-spacing:1px; color:rgba(255,255,255,.5); margin-bottom:20px; }
+
+        /* DROPZONE */
+        .dropzone { border:2px dashed rgba(245,158,11,.3); border-radius:12px; padding:52px 40px; text-align:center; cursor:pointer; transition:all .3s; margin-bottom:24px; }
+        .dropzone:hover { border-color:#F59E0B; background:rgba(245,158,11,.04); }
+        .dz-icon { font-size:40px; margin-bottom:14px; }
+        .dz-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+        .dz-sub { font-size:13px; color:rgba(255,255,255,.35); }
+        input[type=file] { display:none; }
+
+        /* PREFERENCES */
+        .prefs { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }
+        .pref-card { background:#111113; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:20px; }
+        .pref-title { font-size:11px; letter-spacing:1.5px; color:rgba(255,255,255,.35); margin-bottom:14px; }
+        .pref-options { display:flex; flex-direction:column; gap:8px; }
+        .pref-opt { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.07); cursor:pointer; transition:all .2s; font-size:13px; }
+        .pref-opt:hover { border-color:rgba(255,255,255,.2); }
+        .pref-opt.selected { border-color:#F59E0B; background:rgba(245,158,11,.08); color:#F59E0B; }
+        .pref-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.2); flex-shrink:0; }
+        .pref-opt.selected .pref-dot { background:#F59E0B; }
+
+        /* GENERATE BTN */
+        .generate-btn { width:100%; background:#F59E0B; color:#000; border:none; padding:16px; border-radius:10px; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:16px; cursor:pointer; transition:all .2s; letter-spacing:.5px; }
+        .generate-btn:hover { background:#FBBF24; transform:translateY(-2px); box-shadow:0 8px 24px rgba(245,158,11,.35); }
+        .generate-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+        /* STATUS */
+        #status { margin-top:20px; text-align:center; font-size:14px; color:#F59E0B; min-height:24px; }
+        #filename { text-align:center; margin-top:10px; font-size:13px; color:rgba(255,255,255,.5); }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="nav">
+        <div class="nav-logo">ShortCraft.</div>
+        <div class="nav-right">
+            <div class="nav-name">👋 {{ name }}</div>
+            <a href="/logout" class="nav-btn">Log out</a>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- GREETING -->
+        <div class="greeting">
+            <div class="greeting-title">Hey <span>{{ name }}</span> 👋</div>
+            <div class="greeting-sub">Ready to craft your next short?</div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">SHORTS CREATED</div>
+                <div class="stat-value">{{ shorts_count }}</div>
+                <div class="stat-sub">all time</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">PLAN</div>
+                <div class="stat-value" style="font-size:20px;margin-top:6px;">Free</div>
+                <div class="stat-sub">3 shorts / month</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">THIS MONTH</div>
+                <div class="stat-value">{{ shorts_count }}</div>
+                <div class="stat-sub">of 3 used</div>
+            </div>
+        </div>
+
+        <!-- UPLOAD -->
+        <div class="section-title">// NEW SHORT</div>
+
+        <label for="fileInput">
+            <div class="dropzone" id="dropzone">
+                <div class="dz-icon">🎬</div>
+                <div class="dz-title">Drop your video here</div>
+                <div class="dz-sub">MP4 · MOV · AVI — click to browse</div>
+            </div>
+        </label>
+        <input type="file" id="fileInput" accept="video/*">
+        <div id="filename"></div>
+
+        <!-- PREFERENCES -->
+        <div class="prefs">
+            <div class="pref-card">
+                <div class="pref-title">CAPTION STYLE</div>
+                <div class="pref-options">
+                    <div class="pref-opt selected" onclick="selectPref(this, 'caption')">
+                        <div class="pref-dot"></div> 3 Words — TikTok Style
+                    </div>
+                    <div class="pref-opt" onclick="selectPref(this, 'caption')">
+                        <div class="pref-dot"></div> Full Line — YouTube Style
+                    </div>
+                    <div class="pref-opt" onclick="selectPref(this, 'caption')">
+                        <div class="pref-dot"></div> No Captions
+                    </div>
+                </div>
+            </div>
+            <div class="pref-card">
+                <div class="pref-title">EDIT STYLE</div>
+                <div class="pref-options">
+                    <div class="pref-opt selected" onclick="selectPref(this, 'style')">
+                        <div class="pref-dot"></div> ⚡ Viral Hook
+                    </div>
+                    <div class="pref-opt" onclick="selectPref(this, 'style')">
+                        <div class="pref-dot"></div> 🎞 Cinematic
+                    </div>
+                    <div class="pref-opt" onclick="selectPref(this, 'style')">
+                        <div class="pref-dot"></div> 🎙 Talking Head
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="generate-btn" id="generateBtn" disabled onclick="uploadAndEdit()">
+            ⚡ Generate Short
+        </button>
+
+        <div id="status"></div>
+
+    </div>
+
+    <script>
+        const fileInput   = document.getElementById("fileInput");
+        const generateBtn = document.getElementById("generateBtn");
+        const status      = document.getElementById("status");
+        const filename    = document.getElementById("filename");
+
+        fileInput.addEventListener("change", function() {
+            if (fileInput.files.length > 0) {
+                generateBtn.disabled = false;
+                filename.textContent = "Selected: " + fileInput.files[0].name;
+            }
+        });
+
+        function selectPref(el, group) {
+            document.querySelectorAll(`.pref-opt`).forEach(opt => {
+                if (opt.closest('.pref-card') === el.closest('.pref-card')) {
+                    opt.classList.remove('selected');
+                }
+            });
+            el.classList.add('selected');
+        }
+
+        async function uploadAndEdit() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            generateBtn.disabled = true;
+            status.textContent   = "Uploading video...";
+
+            const formData = new FormData();
+            formData.append("video", file);
+
+            try {
+                const uploadRes  = await fetch("/upload", { method:"POST", body:formData });
+                const uploadData = await uploadRes.json();
+
+                if (!uploadData.success) {
+                    status.textContent = "Upload failed.";
+                    return;
+                }
+
+                status.textContent = "⚙️ Analyzing video... this takes 1-2 mins";
+
+                const editRes  = await fetch("/edit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ filename: uploadData.filename })
+                });
+                const editData = await editRes.json();
+
+                if (editData.success) {
+                    status.innerHTML = "✅ Done! <a href='/download/" + editData.output + "' style='color:#F59E0B;'>Download your short</a>";
+                } else {
+                    status.textContent = "Error: " + editData.error;
+                    generateBtn.disabled = false;
+                }
+
+            } catch(e) {
+                status.textContent   = "Something went wrong.";
+                generateBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>

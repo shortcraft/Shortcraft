@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ShortCraft - Sign Up</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #0C0C0E;
+            color: #fff;
+            font-family: 'IBM Plex Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        .container { width:100%; max-width:420px; padding:24px; }
+        .logo { font-size:28px; font-weight:700; color:#F59E0B; text-align:center; margin-bottom:8px; letter-spacing:-1px; }
+        .tagline { text-align:center; color:rgba(255,255,255,.35); font-size:13px; margin-bottom:40px; }
+        .card { background:#111113; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:36px; }
+        .card-title { font-size:20px; font-weight:700; margin-bottom:6px; letter-spacing:-.5px; }
+        .card-sub { font-size:12px; color:rgba(255,255,255,.35); margin-bottom:24px; }
+        .field { margin-bottom:16px; }
+        .field label { display:block; font-size:11px; color:rgba(255,255,255,.4); letter-spacing:1px; margin-bottom:8px; }
+        .field input { width:100%; background:#1a1a1c; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff; font-family:'IBM Plex Mono',monospace; font-size:14px; padding:12px 16px; outline:none; transition:all .2s; }
+        .field input:focus { border-color:#F59E0B; background:#1e1e20; }
+        .field input::placeholder { color:rgba(255,255,255,.2); }
+        .btn { width:100%; background:#F59E0B; color:#000; border:none; padding:13px; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; cursor:pointer; transition:all .2s; margin-top:8px; letter-spacing:.5px; }
+        .btn:hover { background:#FBBF24; transform:translateY(-1px); box-shadow:0 6px 20px rgba(245,158,11,.3); }
+        .plan-row { display:flex; gap:10px; margin-bottom:20px; }
+        .plan { flex:1; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:12px; text-align:center; cursor:pointer; transition:all .2s; }
+        .plan.selected { border-color:#F59E0B; background:rgba(245,158,11,.08); }
+        .plan-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+        .plan-price { font-size:11px; color:rgba(255,255,255,.4); }
+        .divider { text-align:center; margin-top:24px; font-size:13px; color:rgba(255,255,255,.3); }
+        .divider a { color:#F59E0B; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ShortCraft.</div>
+        <div class="tagline">AI-powered shorts editor</div>
+
+        <div class="card">
+            <div class="card-title">Create your account</div>
+            <div class="card-sub">Start editing smarter. No credit card required.</div>
+
+            <form method="POST">
+                <div class="field">
+                    <label>YOUR NAME</label>
+                    <input type="text" name="name" placeholder="Your name" required />
+                </div>
+                <div class="field">
+                    <label>EMAIL</label>
+                    <input type="email" name="email" placeholder="you@email.com" required />
+                </div>
+                <div class="field">
+                    <label>PASSWORD</label>
+                    <input type="password" name="password" placeholder="Min 8 characters" required />
+                </div>
+                <button class="btn" type="submit">Create Account →</button>
+            </form>
+
+            <div class="divider">
+                Already have an account? <a href="/login">Log in</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
