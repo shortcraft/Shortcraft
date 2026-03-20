@@ -5,12 +5,14 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from auth import db, login_manager, User
 import os
+import anthropic
 import whisper
 import numpy as np
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 
 app = Flask(__name__)
 app.secret_key = "shortcraft2026"
+ANTHROPIC_KEY = "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"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
 
 db.init_app(app)
@@ -100,6 +102,7 @@ def edit():
     try:
         data     = request.get_json()
         filename = data["filename"]
+        prompt   = data.get("prompt", "")
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         output   = "ShortCraft_" + filename
         out_path = os.path.join(OUTPUT_FOLDER, output)
@@ -108,6 +111,17 @@ def edit():
         video    = VideoFileClip(filepath)
         duration = video.duration
 
+# Smart prompt parsing (no API needed)
+        ai_instruction = {"energy": "high", "length": 48}
+        if prompt:
+            prompt_lower = prompt.lower()
+            if any(w in prompt_lower for w in ["calm", "slow", "cinematic", "peaceful"]):
+                ai_instruction["energy"] = "low"
+            if any(w in prompt_lower for w in ["30", "thirty", "short"]):
+                ai_instruction["length"] = 30
+            if any(w in prompt_lower for w in ["60", "sixty", "long"]):
+                ai_instruction["length"] = 60
+            print(f"Prompt parsed: {ai_instruction}")    
         # 2. Find emotional peaks
         audio      = video.audio
         energy_map = []
@@ -129,13 +143,6 @@ def edit():
 
         selected = sorted(selected, key=lambda x: x[0])
 
-        # 3. Build cut ranges
-        cut_ranges = []
-        for peak in selected:
-            cut_start = max(0, peak[0] - 8)
-            cut_end   = min(duration, peak[0] + 8)
-            cut_ranges.append((cut_start, cut_end))
-
         # 4. Build clips
         clips = []
         for cs, ce in cut_ranges:
@@ -143,7 +150,15 @@ def edit():
 
         short = concatenate_videoclips(clips)
         dur   = short.duration
-
+        
+# 3. Build cut ranges using AI instruction
+        clip_length = ai_instruction.get("length", 48) // 3
+        cut_ranges = []
+        for peak in selected:
+            cut_start = max(0, peak[0] - clip_length)
+            cut_end   = min(duration, peak[0] + clip_length)
+            cut_ranges.append((cut_start, cut_end))
+            
         # 5. Captions
         model     = whisper.load_model("base")
         result    = model.transcribe(filepath)
