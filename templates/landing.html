@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortCraft — AI Shorts Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --amber: #F59E0B;
+            --amber-dim: rgba(245,158,11,.12);
+            --bg: #080810;
+            --bg2: #0E0E18;
+            --border: rgba(255,255,255,.07);
+            --text: #E8E6E0;
+            --muted: rgba(232,230,224,.4);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        /* GRID BACKGROUND */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* NAV */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 60px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(8,8,16,.92);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+        }
+
+        .nav-logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--amber);
+            letter-spacing: -1px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color .2s;
+        }
+
+        .nav-links a:hover { color: var(--text); }
+
+        .nav-ctas {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 9px 20px;
+            border-radius: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-ghost:hover {
+            border-color: rgba(255,255,255,.25);
+            color: var(--text);
+        }
+
+        .btn-amber {
+            background: var(--amber);
+            color: #000;
+            border: none;
+            padding: 9px 22px;
+            border-radius: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .2s;
+            text-decoration: none;
+            display: inline-block;
+            letter-spacing: .3px;
+        }
+
+        .btn-amber:hover {
+            background: #FBBF24;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(245,158,11,.35);
+        }
+
+        /* HERO */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 120px 24px 100px;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: var(--amber-dim);
+            border: 1px solid rgba(245,158,11,.3);
+            color: var(--amber);
+            border-radius: 4px;
+            padding: 5px 16px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-bottom: 32px;
+        }
+
+        .hero-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(44px, 7vw, 88px);
+            font-weight: 800;
+            line-height: 1.04;
+            letter-spacing: -3px;
+            margin-bottom: 24px;
+        }
+
+        .hero-title .accent { color: var(--amber); }
+
+        .hero-sub {
+            font-size: 17px;
+            color: var(--muted);
+            max-width: 520px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 80px;
+        }
+
+        .btn-amber-lg {
+            background: var(--amber);
+            color: #000;
+            border: none;
+            padding: 14px 36px;
+            border-radius: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all .2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-amber-lg:hover {
+            background: #FBBF24;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 32px rgba(245,158,11,.4);
+        }
+
+        .btn-ghost-lg {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all .2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-ghost-lg:hover {
+            border-color: rgba(255,255,255,.25);
+            color: var(--text);
+        }
+
+        /* MOCK EDITOR */
+        .mock-editor {
+            display: inline-block;
+            background: #0E0E18;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 16px;
+            overflow: hidden;
+            max-width: 700px;
+            width: 90vw;
+            text-align: left;
+            box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(245,158,11,.1);
+        }
+
+        .mock-topbar {
+            background: #141420;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mock-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .mock-title { margin-left: 10px; font-size: 12px; color: var(--muted); }
+
+        .mock-body { display: flex; }
+
+        .mock-preview {
+            flex: 1;
+            padding: 24px;
+            background: #0a0a14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mock-phone {
+            width: 90px;
+            height: 160px;
+            background: linear-gradient(160deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.15);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mock-phone-caption {
+            background: rgba(245,158,11,.9);
+            color: #000;
+            font-size: 7px;
+            font-weight: 700;
+            text-align: center;
+            border-radius: 3px;
+            padding: 3px 5px;
+            line-height: 1.3;
+            z-index: 2;
+            position: relative;
+        }
+
+        .mock-panel {
+            width: 200px;
+            background: #111118;
+            border-left: 1px solid var(--border);
+            padding: 18px;
+            flex-shrink: 0;
+        }
+
+        .mock-section { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+
+        .mock-row {
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .mock-row.active {
+            background: var(--amber-dim);
+            color: var(--amber);
+            border: 1px solid rgba(245,158,11,.25);
+        }
+
+        .mock-stat { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+        .mock-val { color: var(--amber); }
+
+        .mock-timeline {
+            padding: 12px 18px;
+            background: #0a0a14;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 3px;
+        }
+
+        .mock-seg {
+            flex: 1;
+            height: 20px;
+            border-radius: 2px;
+            background: rgba(255,255,255,.06);
+        }
+
+        .mock-seg.active { background: var(--amber); }
+
+        /* SECTIONS */
+        section {
+            position: relative;
+            z-index: 1;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 100px 48px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--amber);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(28px, 4vw, 48px);
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            margin-bottom: 56px;
+        }
+
+        /* HOW IT WORKS */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .step-card {
+            background: #0E0E18;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            transition: all .3s;
+        }
+
+        .step-card:hover {
+            border-color: rgba(245,158,11,.25);
+            transform: translateY(-4px);
+        }
+
+        .step-num {
+            width: 36px;
+            height: 36px;
+            background: var(--amber);
+            color: #000;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+            margin-bottom: 18px;
+        }
+
+        .step-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .step-body { font-size: 13px; color: var(--muted); line-height: 1.65; font-weight: 300; }
+
+        /* FEATURES */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .feat-card {
+            background: #0E0E18;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            transition: all .25s;
+        }
+
+        .feat-card:hover {
+            border-color: rgba(245,158,11,.2);
+            background: #111118;
+        }
+
+        .feat-icon { font-size: 28px; margin-bottom: 14px; }
+        .feat-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+        .feat-body { font-size: 13px; color: var(--muted); line-height: 1.6; font-weight: 300; }
+
+        /* PRICING */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .plan-card {
+            background: #0E0E18;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 32px;
+            position: relative;
+            transition: all .3s;
+        }
+
+        .plan-card:hover { transform: translateY(-4px); }
+
+        .plan-hot {
+            border-color: rgba(245,158,11,.4);
+            background: #111118;
+            box-shadow: 0 0 40px rgba(245,158,11,.06);
+        }
+
+        .plan-badge {
+            position: absolute;
+            top: -13px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--amber);
+            color: #000;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 3px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .plan-name { font-size: 12px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+        .plan-price { font-size: 44px; font-weight: 700; letter-spacing: -2px; margin-bottom: 20px; font-family: 'Syne', sans-serif; }
+        .plan-sub { font-size: 14px; font-weight: 300; color: var(--muted); letter-spacing: 0; font-family: 'IBM Plex Mono', monospace; }
+        .plan-divider { height: 1px; background: var(--border); margin-bottom: 20px; }
+        .plan-feat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(232,230,224,.65); margin-bottom: 10px; }
+        .plan-check { color: var(--amber); font-size: 10px; }
+
+        /* FOOTER CTA */
+        .footer-cta {
+            text-align: center;
+            padding: 100px 24px;
+            border-top: 1px solid var(--border);
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-cta h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(28px, 4vw, 52px);
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+        }
+
+        .footer-cta p { color: var(--muted); margin-bottom: 40px; font-size: 15px; }
+
+        footer {
+            text-align: center;
+            padding: 28px;
+            color: rgba(232,230,224,.2);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* GLOW */
+        .glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(245,158,11,.07) 0%, transparent 70%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-logo">ShortCraft.</div>
+        <div class="nav-links">
+            <a href="#how">How it works</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+        </div>
+        <div class="nav-ctas">
+            <a href="/login" class="btn-ghost">Log in</a>
+            <a href="/signup" class="btn-amber">Start Free →</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="glow" style="top:-200px;left:50%;transform:translateX(-50%);"></div>
+
+        <div class="hero-badge">AI SHORTS ENGINE — BETA</div>
+
+        <h1 class="hero-title">
+            Edit Smarter.<br>
+            <span class="accent">Go Viral.</span>
+        </h1>
+
+        <p class="hero-sub">
+            ShortCraft analyzes your footage, finds emotionally charged moments,
+            and renders a scroll-stopping short — automatically.
+        </p>
+
+        <div class="hero-ctas">
+            <a href="/signup" class="btn-amber-lg">Start Editing Free →</a>
+            <a href="#how" class="btn-ghost-lg">See How It Works</a>
+        </div>
+
+        <!-- MOCK EDITOR -->
+        <div class="mock-editor">
+            <div class="mock-topbar">
+                <div class="mock-dot" style="background:#FF5F57"></div>
+                <div class="mock-dot" style="background:#FFBD2E"></div>
+                <div class="mock-dot" style="background:#28C840"></div>
+                <div class="mock-title">ShortCraft — raw_footage.mp4</div>
+            </div>
+            <div class="mock-body">
+                <div class="mock-preview">
+                    <div class="mock-phone">
+                        <div class="mock-phone-caption">THIS WILL CHANGE<br>EVERYTHING ⚡</div>
+                    </div>
+                </div>
+                <div class="mock-panel">
+                    <div class="mock-section">EDIT STYLE</div>
+                    <div class="mock-row active">⚡ Viral Hook <span>✓</span></div>
+                    <div class="mock-row">🎞 Cinematic</div>
+                    <div class="mock-row">🎙 Talking Head</div>
+                    <div class="mock-section" style="margin-top:16px;">AI ANALYSIS</div>
+                    <div class="mock-stat"><span>Peak moment</span><span class="mock-val">0:47</span></div>
+                    <div class="mock-stat"><span>Viral score</span><span class="mock-val">94/100</span></div>
+                    <div class="mock-stat"><span>Captions</span><span class="mock-val">Auto-on</span></div>
+                </div>
+            </div>
+            <div class="mock-timeline">
+                {%- for i in range(24) %}
+                <div class="mock-seg {% if 4 <= i <= 14 %}active{% endif %}"></div>
+                {%- endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how">
+        <div class="section-label">// HOW IT WORKS</div>
+        <h2 class="section-title">Three steps to your short</h2>
+        <div class="steps">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-title">Upload your footage</div>
+                <div class="step-body">Drop any video — raw clips, interviews, cinematic footage. Up to 2GB. Any format.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-title">Choose style + prompt</div>
+                <div class="step-body">Pick a template and tell the AI what to focus on. Or let it decide everything automatically.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-title">Download & post</div>
+                <div class="step-body">Get a 9:16 short with auto-captions, beat-synced cuts, and emotional pacing — in under 60 seconds.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" style="border-top:1px solid var(--border);">
+        <div class="section-label">// FEATURES</div>
+        <h2 class="section-title">Built different</h2>
+        <div class="features">
+            <div class="feat-card">
+                <div class="feat-icon">🧠</div>
+                <div class="feat-title">Emotional Peak Detection</div>
+                <div class="feat-body">AI scans every second of audio and finds where the emotion peaks — not just where it's loudest.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🎵</div>
+                <div class="feat-title">Beat-Synced Cuts</div>
+                <div class="feat-body">Every cut lands on the beat. Your edit flows like a real editor spent hours on it.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">📝</div>
+                <div class="feat-title">Auto Captions</div>
+                <div class="feat-body">Whisper AI transcribes every word. 3-word TikTok-style captions burn in automatically.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">💬</div>
+                <div class="feat-title">Prompt-Driven Editing</div>
+                <div class="feat-body">Type what you want — "focus on the car reveal" or "keep it under 30 seconds" — and the AI listens.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">⚡</div>
+                <div class="feat-title">Sub-60s Render</div>
+                <div class="feat-body">Upload, configure, download. Faster than making coffee.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">📱</div>
+                <div class="feat-title">9:16 Optimized</div>
+                <div class="feat-body">Every output is built for TikTok, Reels, and Shorts. Smart crop included.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" style="border-top:1px solid var(--border);">
+        <div class="section-label">// PRICING</div>
+        <h2 class="section-title">Simple pricing</h2>
+        <div class="pricing-grid">
+            <div class="plan-card">
+                <div class="plan-name">FREE</div>
+                <div class="plan-price">₹0<span class="plan-sub"> / forever</span></div>
+                <div class="plan-divider"></div>
+                <div class="plan-feat"><span class="plan-check">▸</span> 3 shorts / month</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> All templates</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> 720p export</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Auto captions</div>
+                <a href="/signup" class="btn-ghost" style="width:100%;text-align:center;margin-top:24px;display:block;">Get Started</a>
+            </div>
+            <div class="plan-card plan-hot">
+                <div class="plan-badge">MOST POPULAR</div>
+                <div class="plan-name">PRO</div>
+                <div class="plan-price">₹799<span class="plan-sub"> / month</span></div>
+                <div class="plan-divider"></div>
+                <div class="plan-feat"><span class="plan-check">▸</span> 50 shorts / month</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> All templates</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> 4K export</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Custom branding</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Priority render</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> No watermark</div>
+                <a href="/signup" class="btn-amber" style="width:100%;text-align:center;margin-top:24px;display:block;">Start Pro Trial</a>
+            </div>
+            <div class="plan-card">
+                <div class="plan-name">STUDIO</div>
+                <div class="plan-price">₹2,499<span class="plan-sub"> / month</span></div>
+                <div class="plan-divider"></div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Unlimited shorts</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Team seats (10)</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> API access</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> White-label</div>
+                <div class="plan-feat"><span class="plan-check">▸</span> Priority support</div>
+                <a href="/signup" class="btn-ghost" style="width:100%;text-align:center;margin-top:24px;display:block;">Contact Sales</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER CTA -->
+    <div class="footer-cta">
+        <h2>Ready to craft your first short?</h2>
+        <p>No credit card. No BS. Just better edits.</p>
+        <a href="/signup" class="btn-amber-lg">Start Free →</a>
+    </div>
+
+    <footer>
+        © 2026 ShortCraft — AI Shorts Engine
+    </footer>
+
+</body>
+</html>

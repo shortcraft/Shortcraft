@@ -5,19 +5,17 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from auth import db, login_manager, User
 import os
-import anthropic
 import whisper
 import numpy as np
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, concatenate_videoclips
 
 app = Flask(__name__)
 app.secret_key = "shortcraft2026"
-ANTHROPIC_KEY = "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"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
 
 db.init_app(app)
 login_manager.init_app(app)
-login_manager.login_view = "login"
+login_manager.login_view = "landing"
 
 with app.app_context():
     db.create_all()
@@ -28,63 +26,55 @@ OUTPUT_FOLDER = "outputs"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# ─── SIGNUP ───────────────────────
+# LANDING
+@app.route("/landing")
+def landing():
+    return render_template("landing.html")
+
+# SIGNUP
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
         name     = request.form.get("name")
         email    = request.form.get("email")
         password = request.form.get("password")
-
         existing = User.query.filter_by(email=email).first()
         if existing:
             return render_template("signup.html", error="Email already exists")
-
-        new_user = User(
-            name     = name,
-            email    = email,
-            password = generate_password_hash(password)
-        )
+        new_user = User(name=name, email=email, password=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
         login_user(new_user)
         return redirect(url_for("home"))
-
     return render_template("signup.html")
 
-# ─── LOGIN ────────────────────────
+# LOGIN
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         email    = request.form.get("email")
         password = request.form.get("password")
         user     = User.query.filter_by(email=email).first()
-
         if not user or not check_password_hash(user.password, password):
             return render_template("login.html", error="Invalid email or password")
-
         login_user(user)
         return redirect(url_for("home"))
-
     return render_template("login.html")
 
-# ─── LOGOUT ───────────────────────
+# LOGOUT
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("login"))
+    return redirect(url_for("landing"))
 
-# ─── HOME / DASHBOARD ─────────────
+# HOME
 @app.route("/")
 @login_required
 def home():
-    return render_template("dashboard.html",
-        name         = current_user.name,
-        shorts_count = 0
-    )
+    return render_template("dashboard.html", name=current_user.name, shorts_count=0)
 
-# ─── UPLOAD ───────────────────────
+# UPLOAD
 @app.route("/upload", methods=["POST"])
 @login_required
 def upload():
@@ -95,7 +85,7 @@ def upload():
     file.save(filepath)
     return jsonify({"success": True, "filename": file.filename})
 
-# ─── EDIT ─────────────────────────
+# EDIT
 @app.route("/edit", methods=["POST"])
 @login_required
 def edit():
@@ -103,26 +93,38 @@ def edit():
         data     = request.get_json()
         filename = data["filename"]
         prompt   = data.get("prompt", "")
+        template = data.get("template", "viral")
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         output   = "ShortCraft_" + filename
         out_path = os.path.join(OUTPUT_FOLDER, output)
+
+        print(f"Template: {template} | Prompt: {prompt}")
+
+        TEMPLATES = {
+            "viral":     {"energy": "high",   "length": 24, "clip_count": 4, "captions": True,  "caption_words": 3},
+            "cinematic": {"energy": "low",    "length": 48, "clip_count": 3, "captions": False, "caption_words": 0},
+            "talking":   {"energy": "speech", "length": 36, "clip_count": 5, "captions": True,  "caption_words": 5},
+        }
+
+        ai = TEMPLATES.get(template, TEMPLATES["viral"]).copy()
+
+        if prompt:
+            p = prompt.lower()
+            if any(w in p for w in ["calm", "slow", "cinematic", "peaceful"]): ai["energy"] = "low"
+            if any(w in p for w in ["fast", "energy", "hype", "viral"]):       ai["energy"] = "high"
+            if any(w in p for w in ["no caption", "no captions"]):             ai["captions"] = False
+            if any(w in p for w in ["caption", "captions", "text"]):           ai["captions"] = True
+            for word in p.split():
+                if word.isdigit() and 10 <= int(word) <= 120:
+                    ai["length"] = int(word)
+
+        print(f"AI settings: {ai}")
 
         # 1. Load video
         video    = VideoFileClip(filepath)
         duration = video.duration
 
-# Smart prompt parsing (no API needed)
-        ai_instruction = {"energy": "high", "length": 48}
-        if prompt:
-            prompt_lower = prompt.lower()
-            if any(w in prompt_lower for w in ["calm", "slow", "cinematic", "peaceful"]):
-                ai_instruction["energy"] = "low"
-            if any(w in prompt_lower for w in ["30", "thirty", "short"]):
-                ai_instruction["length"] = 30
-            if any(w in prompt_lower for w in ["60", "sixty", "long"]):
-                ai_instruction["length"] = 60
-            print(f"Prompt parsed: {ai_instruction}")    
-        # 2. Find emotional peaks
+        # 2. Scan audio energy
         audio      = video.audio
         energy_map = []
         for second in range(int(duration)):
@@ -132,76 +134,78 @@ def edit():
             energy  = float(np.mean(np.abs(samples)))
             energy_map.append((second, energy))
 
-        sorted_peaks = sorted(energy_map, key=lambda x: x[1], reverse=True)
-        selected = []
-        for peak in sorted_peaks:
-            too_close = any(abs(peak[0] - s[0]) < 30 for s in selected)
-            if not too_close:
-                selected.append(peak)
-            if len(selected) == 3:
-                break
+        # 3. Find peaks
+        clip_count  = ai.get("clip_count", 3)
+        clip_length = max(4, ai.get("length", 48) // clip_count)
 
-        selected = sorted(selected, key=lambda x: x[0])
+        if ai.get("energy") == "speech":
+            model_w  = whisper.load_model("base")
+            segments = model_w.transcribe(filepath)["segments"][:clip_count]
+            selected = [(int(seg["start"]), 0.5) for seg in segments]
+            if not selected:
+                selected = sorted(energy_map, key=lambda x: x[1], reverse=True)[:clip_count]
+        else:
+            sorted_peaks   = sorted(energy_map, key=lambda x: x[1], reverse=True)
+            final_selected = []
+            for peak in sorted_peaks:
+                too_close = any(abs(peak[0] - s[0]) < clip_length for s in final_selected)
+                if not too_close:
+                    final_selected.append(peak)
+                if len(final_selected) == clip_count:
+                    break
+            selected = sorted(final_selected, key=lambda x: x[0])
 
-        # 4. Build clips
+        # 4. Build cut ranges
+        cut_ranges = []
+        for peak in selected:
+            cut_start = max(0, peak[0] - clip_length // 2)
+            cut_end   = min(duration, peak[0] + clip_length // 2)
+            cut_ranges.append((cut_start, cut_end))
+
+        # 5. Build clips
         clips = []
         for cs, ce in cut_ranges:
             clips.append(video.subclipped(cs, ce))
 
         short = concatenate_videoclips(clips)
         dur   = short.duration
-        
-# 3. Build cut ranges using AI instruction
-        clip_length = ai_instruction.get("length", 48) // 3
-        cut_ranges = []
-        for peak in selected:
-            cut_start = max(0, peak[0] - clip_length)
-            cut_end   = min(duration, peak[0] + clip_length)
-            cut_ranges.append((cut_start, cut_end))
-            
-        # 5. Captions
-        model     = whisper.load_model("base")
-        result    = model.transcribe(filepath)
-        cap_clips = []
 
-        for seg in result["segments"]:
-            s    = seg["start"]
-            e    = min(seg["end"], dur)
-            text = seg["text"].strip().upper()
+        # 6. Captions
+        use_captions = ai.get("captions", True)
+        cap_words    = max(1, ai.get("caption_words", 3))
+        cap_clips    = []
 
-            if not text or s > dur:
-                continue
-
-            in_cut = any(cs <= s <= ce for cs, ce in cut_ranges)
-            if not in_cut:
-                continue
-
-            words  = text.split()
-            chunks = [words[i:i+3] for i in range(0, len(words), 3)]
-            tpc    = (e - s) / max(len(chunks), 1)
-
-            for j, chunk in enumerate(chunks):
-                cs2 = s + j * tpc
-                ce2 = min(cs2 + tpc, dur)
-                if cs2 >= dur:
+        if use_captions:
+            model_w = whisper.load_model("base")
+            result  = model_w.transcribe(filepath)
+            for seg in result["segments"]:
+                s    = seg["start"]
+                e    = min(seg["end"], dur)
+                text = seg["text"].strip().upper()
+                if not text or s > dur:
                     continue
-                tc = TextClip(
-                    text         = " ".join(chunk),
-                    font_size    = 40,
-                    color        = "white",
-                    font         = "C:/Windows/Fonts/arialbd.ttf",
-                    stroke_color = "black",
-                    stroke_width = 2,
-                    size         = (1800, 100),
-                    method       = "caption",
-                )
-                tc = tc.with_start(cs2).with_end(ce2).with_position(("center", 700))
-                cap_clips.append(tc)
+                in_cut = any(cs <= s <= ce for cs, ce in cut_ranges)
+                if not in_cut:
+                    continue
+                words  = text.split()
+                chunks = [words[i:i+cap_words] for i in range(0, len(words), cap_words)]
+                tpc    = (e - s) / max(len(chunks), 1)
+                for j, chunk in enumerate(chunks):
+                    cs2 = s + j * tpc
+                    ce2 = min(cs2 + tpc, dur)
+                    if cs2 >= dur:
+                        continue
+                    tc = TextClip(
+                        text=" ".join(chunk), font_size=40, color="white",
+                        font="C:/Windows/Fonts/arialbd.ttf", stroke_color="black",
+                        stroke_width=2, size=(1800, 100), method="caption",
+                    )
+                    tc = tc.with_start(cs2).with_end(ce2).with_position(("center", 700))
+                    cap_clips.append(tc)
 
-        # 6. Composite and export
+        # 7. Export
         final = CompositeVideoClip([short] + cap_clips)
         final.write_videofile(out_path, fps=30, codec="libx264", audio_codec="aac")
-
         video.close()
         final.close()
 
@@ -210,13 +214,13 @@ def edit():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-# ─── DOWNLOAD ─────────────────────
+# DOWNLOAD
 @app.route("/download/<filename>")
 @login_required
 def download(filename):
     return send_file(os.path.join(OUTPUT_FOLDER, filename), as_attachment=True)
 
-# ─── START SERVER ─────────────────
+# START
 if __name__ == "__main__":
     print("=" * 40)
     print("  ShortCraft Web Server Starting...")

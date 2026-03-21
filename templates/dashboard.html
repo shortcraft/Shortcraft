@@ -214,11 +214,15 @@
                 setTimeout(() => { setStep(4, "done"); setStep(5, "active"); }, 15000);
 
                 const prompt = document.getElementById("promptInput").value;
+                const selectedTemplate = document.querySelector('.pref-card:last-child .pref-opt.selected');
+                const templateMap = {"⚡ Viral Hook": "viral", "🎞 Cinematic": "cinematic", "🎙 Talking Head": "talking"};
+                const templateText = selectedTemplate ? selectedTemplate.textContent.trim() : "⚡ Viral Hook";
+                const template = templateMap[templateText] || "viral";
 
-                const editRes  = await fetch("/edit", {
+                const editRes = await fetch("/edit", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ filename: uploadData.filename, prompt: prompt })
+                    body: JSON.stringify({ filename: uploadData.filename, prompt: prompt, template: template })
                 });
                 const editData = await editRes.json();
                 setStep(5, "done");
